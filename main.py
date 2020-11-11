@@ -140,7 +140,7 @@ class Net:
 def main():
     env_id = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_ENV
     with gym.make(env_id) as env:
-        layers = (*env.observation_space.shape, 8, 8)
+        layers = (*env.observation_space.shape, 16)
         if isinstance(env.action_space, Box):
             layers = (*layers, *env.action_space.shape)
         else:
@@ -150,7 +150,7 @@ def main():
 
 
         try:
-            net.train(env, 100)
+            net.train(env, 1000)
             print('Saved model')
             net.save(f'net-{env_id}.pkl')
         except KeyboardInterrupt:
