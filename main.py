@@ -12,6 +12,8 @@ def relu(z):
     return np.maximum(0, z)
 
 
+# NOTE: If you change this, make sure you deal with
+# low values with cont action values.
 activ = relu
 
 
@@ -67,7 +69,10 @@ class Net:
 
             a = self.forward(obs)
             if isinstance(env.action_space, Box):
-                action = a
+                # Since relu's min output is 0, we can't
+                # reach low. say low is -2, if we subtract 2
+                # from the result then we can access the low value.
+                action = a + env.action_space.low
             else:
                 action = np.argmax(a)
 
