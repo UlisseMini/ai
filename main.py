@@ -144,6 +144,7 @@ class Net:
 
 def main():
     env_id = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_ENV
+    save_file = f'net-{env_id}.pkl'
     with gym.make(env_id) as env:
         layers = (*env.observation_space.shape, 16)
         if isinstance(env.action_space, Box):
@@ -151,13 +152,18 @@ def main():
         else:
             layers = (*layers, env.action_space.n)
 
-        net = Net.random(layers)
+        try:
+            net = Net.load(save_file)
+            print(f'Loaded model from {save_file}')
+        except FileNotFoundError:
+            print('Initialized random network')
+            net = Net.random(layers)
 
 
         try:
-            net.train(env, 1000)
+            net.train(env, 100)
             print('Saved model')
-            net.save(f'net-{env_id}.pkl')
+            net.save(save_file)
         except KeyboardInterrupt:
             pass
 
