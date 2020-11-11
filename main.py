@@ -2,6 +2,7 @@ import gym
 import time
 import sys
 import numpy as np
+import pickle
 from gym.spaces import Box, Discrete
 
 DEFAULT_ENV = 'CartPole-v0'
@@ -35,6 +36,16 @@ class Net:
         ]
         return cls(weights, biases)
 
+
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+
+
+    @classmethod
+    def load(cls, filename):
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
 
 
     def forward(self, a):
@@ -129,15 +140,19 @@ class Net:
 def main():
     env_id = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_ENV
     with gym.make(env_id) as env:
+        layers = (*env.observation_space.shape, 8, 8)
         if isinstance(env.action_space, Box):
-            layers = (*env.observation_space.shape, *env.action_space.shape)
+            layers = (*layers, *env.action_space.shape)
         else:
-            layers = (*env.observation_space.shape, env.action_space.n)
+            layers = (*layers, env.action_space.n)
 
         net = Net.random(layers)
 
+
         try:
-            net.train(env, 30)
+            net.train(env, 100)
+            print('Saved model')
+            net.save(f'net-{env_id}.pkl')
         except KeyboardInterrupt:
             pass
 
