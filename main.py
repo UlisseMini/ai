@@ -87,14 +87,14 @@ class Net:
 
 
 
-    def train(self, env, generations, npop=50, sigma=0.01, alpha=0.01):
+    def train(self, env, generations, npop=50, sigma=0.5, alpha=0.01):
         """
         sigma is noise standard deviation
         alpha is learning rate
         """
         for gen in range(generations):
-            w_noise = [np.random.randn(npop, *w.shape) for w in self.weights]
-            b_noise = [np.random.randn(npop, *b.shape) for b in self.biases]
+            w_noise = [np.random.randn(npop, *w.shape)*sigma for w in self.weights]
+            b_noise = [np.random.randn(npop, *b.shape)*sigma for b in self.biases]
             assert len(w_noise) == len(b_noise)
 
             R = np.zeros(npop)
