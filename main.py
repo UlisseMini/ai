@@ -57,7 +57,7 @@ class Net:
         return a
 
 
-    def evaluate(self, env, render=False):
+    def evaluate(self, env, render=False, sleep=1/60):
         total_reward = 0
 
         obs = env.reset()
@@ -65,7 +65,7 @@ class Net:
         while not done:
             if render:
                 env.render()
-                time.sleep(1/60)
+                time.sleep(sleep)
 
             a = self.forward(obs)
             if isinstance(env.action_space, Box):
@@ -137,7 +137,7 @@ class Net:
 
 
             # print current best reward
-            reward = self.evaluate(env)
+            reward = self.evaluate(env, render=(gen % 10 == 0), sleep=0)
             print(f'gen {gen} reward: {reward}')
 
 
