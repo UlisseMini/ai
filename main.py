@@ -87,7 +87,7 @@ class Net:
 
 
 
-    def train(self, env, generations, npop=50, sigma=0.5, alpha=0.01):
+    def train(self, env, generations, interactive=True, npop=50, sigma=0.5, alpha=0.01):
         """
         sigma is noise standard deviation
         alpha is learning rate
@@ -137,8 +137,9 @@ class Net:
 
 
             # print current best reward
-            reward = self.evaluate(env, render=(gen % 10 == 0), sleep=0)
-            print(f'gen {gen} reward: {reward}')
+            if interactive:
+                reward = self.evaluate(env, render=(gen % 10 == 0), sleep=0)
+                print(f'gen {gen} reward: {reward}')
 
 
 
