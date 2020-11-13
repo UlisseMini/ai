@@ -213,7 +213,8 @@ def main():
                     interactive=True, show_every=args.show_every,
                     npop=args.npop, sigma=args.sigma, alpha=args.alpha,
                 )
-            except KeyboardInterrupt:
+            # AssertionError raised by some envs when interrupted.
+            except (KeyboardInterrupt, AssertionError):
                 pass
 
         if args.eval:
