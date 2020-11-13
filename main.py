@@ -143,15 +143,23 @@ class Net:
 
 
 
+
+def space_to_n(space):
+    if isinstance(space, Box):
+        # todo: flatten if multi-dimensional
+        assert len(space.shape) == 1
+        return space.shape[0]
+    elif isinstance(space, Discrete):
+        return space.n
+    else:
+        raise NotImplemented
+
+
 def main():
     env_id = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_ENV
     save_file = f'net-{env_id}.pkl'
     with gym.make(env_id) as env:
-        layers = (*env.observation_space.shape, 16)
-        if isinstance(env.action_space, Box):
-            layers = (*layers, *env.action_space.shape)
-        else:
-            layers = (*layers, env.action_space.n)
+        layers = (space_to_n(env.observation_space), 16, space_to_n(env.action_space))
 
         try:
             net = Net.load(save_file)
