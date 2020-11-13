@@ -6,6 +6,13 @@ import numpy as np
 import pickle
 from gym.spaces import Box, Discrete
 
+# default network hyperparameters
+DP = {
+    'sigma': 0.5,
+    'alpha': 0.01,
+    'npop': 50,
+}
+
 # activation function
 def relu(z):
     return np.maximum(0, z)
@@ -90,7 +97,7 @@ class Net:
 
 
 
-    def train(self, env, generations, interactive=True, npop=50, sigma=0.5, alpha=0.01):
+    def train(self, env, generations, interactive=True, npop=DP['npop'], sigma=DP['sigma'], alpha=DP['alpha']):
         """
         sigma is noise standard deviation
         alpha is learning rate
@@ -165,9 +172,9 @@ def main():
     parser.add_argument('--load',   help='load a model from a file', dest='model')
     parser.add_argument('--eval',   help='evaluate network', default=True, action='store_false')
     parser.add_argument('--train',  help='train network',    default=True, action='store_false')
-    parser.add_argument('--npop',   help='population count',         type=int,   default=50)
-    parser.add_argument('--sigma',  help='noise standard deviation', type=float, default=0.5)
-    parser.add_argument('--alpha',  help='learning rate',            type=float, default=0.01)
+    parser.add_argument('--npop',   help='population count',         type=int,   default=DP['npop'])
+    parser.add_argument('--sigma',  help='noise standard deviation', type=float, default=DP['sigma'])
+    parser.add_argument('--alpha',  help='learning rate',            type=float, default=DP['alpha'])
     parser.add_argument('--layers', help='hidden layers', nargs='+', type=int,   default=[16])
     parser.add_argument('--gen',    help='number of generations',    type=int,   default=100)
 
