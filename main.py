@@ -6,11 +6,12 @@ import numpy as np
 import pickle
 from gym.spaces import Box, Discrete
 
-# default network hyperparameters
+# default network perameters
 DP = {
     'sigma': 0.5,
     'alpha': 0.01,
     'npop': 50,
+    'show_every': 10,
 }
 
 # activation function
@@ -97,7 +98,11 @@ class Net:
 
 
 
-    def train(self, env, generations, interactive=True, npop=DP['npop'], sigma=DP['sigma'], alpha=DP['alpha']):
+    def train(
+            self, env, generations,
+            interactive=True, show_every=DP['show_every'],
+            npop=DP['npop'], sigma=DP['sigma'], alpha=DP['alpha']
+    ):
         """
         sigma is noise standard deviation
         alpha is learning rate
@@ -148,7 +153,7 @@ class Net:
 
             # print current best reward
             if interactive:
-                reward = self.evaluate(env, render=(gen % 10 == 0), sleep=0)
+                reward = self.evaluate(env, render=(gen % show_every == 0), sleep=0)
                 print(f'gen {gen} reward: {reward}')
 
 
@@ -177,6 +182,12 @@ def main():
     parser.add_argument('--alpha',  help='learning rate',            type=float, default=DP['alpha'])
     parser.add_argument('--layers', help='hidden layers', nargs='+', type=int,   default=[16])
     parser.add_argument('--gen',    help='number of generations',    type=int,   default=100)
+    parser.add_argument(
+        '--show-every',
+        help='how many generations between rendering network in training',
+        type=int,
+        default=DP['show_every'],
+    )
 
     args = parser.parse_args()
 
@@ -198,7 +209,8 @@ def main():
             print('Training network...')
             try:
                 net.train(
-                    env, args.gen, interactive=True,
+                    env, args.gen,
+                    interactive=True, show_every=args.show_every,
                     npop=args.npop, sigma=args.sigma, alpha=args.alpha,
                 )
             except KeyboardInterrupt:
