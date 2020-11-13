@@ -1,11 +1,10 @@
+import argparse
 import gym
 import time
 import sys
 import numpy as np
 import pickle
 from gym.spaces import Box, Discrete
-
-DEFAULT_ENV = 'CartPole-v0'
 
 # activation function
 def relu(z):
@@ -23,6 +22,8 @@ class Net:
 
         self.weights = weights
         self.biases  = biases
+        # perhaps reconstructing layers is a bit hackish /shrug
+        self.layers  = [weights[0].shape[1]] + [len(b) for b in biases]
 
 
     @classmethod
@@ -47,7 +48,9 @@ class Net:
     @classmethod
     def load(cls, filename):
         with open(filename, 'rb') as f:
-            return pickle.load(f)
+            net = pickle.load(f)
+        # keep compat with old networks if we update init.
+        return Net(net.weights, net.biases)
 
 
     def forward(self, a):
@@ -147,7 +150,7 @@ class Net:
 def space_to_n(space):
     if isinstance(space, Box):
         # todo: flatten if multi-dimensional
-        assert len(space.shape) == 1
+        assert len(space.shape) == 1, 'no multidimensional observations'
         return space.shape[0]
     elif isinstance(space, Discrete):
         return space.n
@@ -155,31 +158,55 @@ def space_to_n(space):
         raise NotImplemented
 
 
-def main():
-    env_id = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_ENV
-    save_file = f'net-{env_id}.pkl'
-    with gym.make(env_id) as env:
-        layers = (space_to_n(env.observation_space), 16, space_to_n(env.action_space))
 
-        try:
-            net = Net.load(save_file)
-            print(f'Loaded model from {save_file}')
-        except FileNotFoundError:
-            print('Initialized random network')
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--env',    help='the gym enviorment to use', default='CartPole-v0')
+    parser.add_argument('--load',   help='load a model from a file', dest='model')
+    parser.add_argument('--eval',   help='evaluate network', default=True, action='store_false')
+    parser.add_argument('--train',  help='train network',    default=True, action='store_false')
+    parser.add_argument('--npop',   help='population count',         type=int,   default=50)
+    parser.add_argument('--sigma',  help='noise standard deviation', type=float, default=0.5)
+    parser.add_argument('--alpha',  help='learning rate',            type=float, default=0.01)
+    parser.add_argument('--layers', help='hidden layers', nargs='+', type=int,   default=[16])
+    parser.add_argument('--gen',    help='number of generations',    type=int,   default=100)
+
+    args = parser.parse_args()
+
+    with gym.make(args.env) as env:
+        input_layer = space_to_n(env.observation_space)
+        output_layer = space_to_n(env.action_space)
+        layers = (input_layer, *args.layers, output_layer)
+
+        if args.model:
+            net = Net.load(args.model)
+            # ensure compat with env
+            assert net.layers[0]  == input_layer,  f'got input layer {net.layers[0]} want {input_layer}'
+            assert net.layers[-1] == output_layer, f'got output layer {net.layers[-1]} want {output_layer}'
+        else:
             net = Net.random(layers)
 
 
-        try:
-            net.train(env, 100)
-            print('Saved model')
-            net.save(save_file)
-        except KeyboardInterrupt:
-            pass
+        if args.train:
+            print('Training network...')
+            try:
+                net.train(
+                    env, args.gen, interactive=True,
+                    npop=args.npop, sigma=args.sigma, alpha=args.alpha,
+                )
+            except KeyboardInterrupt:
+                pass
 
-        print('Training done!')
-        while True:
-            reward = net.evaluate(env, render=True)
-            print('reward', reward)
+        if args.eval:
+            print('Evaluating network...')
+            try:
+                while True:
+                    print('reward', net.evaluate(env, render=True))
+            except KeyboardInterrupt:
+                pass
+
+        print('\nDone!')
+
 
 
 if __name__ == '__main__':
