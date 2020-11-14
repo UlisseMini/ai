@@ -2,6 +2,7 @@ import argparse
 import gym
 import time
 import sys
+import os
 import numpy as np
 import pickle
 from gym.spaces import Box, Discrete
@@ -174,7 +175,7 @@ def space_to_n(space):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env',    help='the gym enviorment to use', default='CartPole-v0')
-    parser.add_argument('--load',   help='load a model from a file', dest='model')
+    parser.add_argument('--save',   help='save file to use')
     parser.add_argument('--eval',   help='evaluate network', default=True, action='store_false')
     parser.add_argument('--train',  help='train network',    default=True, action='store_false')
     parser.add_argument('--npop',   help='population count',         type=int,   default=DP['npop'])
@@ -191,18 +192,22 @@ def main():
 
     args = parser.parse_args()
 
+    save_file = args.save or f'{args.env}-{"x".join(map(str, args.layers))}.pkl'
+
     with gym.make(args.env) as env:
         input_layer = space_to_n(env.observation_space)
         output_layer = space_to_n(env.action_space)
         layers = (input_layer, *args.layers, output_layer)
 
-        if args.model:
-            net = Net.load(args.model)
+        if os.path.exists(save_file):
+            net = Net.load(save_file)
             # ensure compat with env
             assert net.layers[0]  == input_layer,  f'got input layer {net.layers[0]} want {input_layer}'
             assert net.layers[-1] == output_layer, f'got output layer {net.layers[-1]} want {output_layer}'
+            print(f'Loaded network from {save_file}')
         else:
             net = Net.random(layers)
+            print('Initialized random network')
 
 
         if args.train:
@@ -216,6 +221,9 @@ def main():
             # AssertionError raised by some envs when interrupted.
             except (KeyboardInterrupt, AssertionError):
                 pass
+            finally:
+                net.save(save_file)
+                print(f'Saved network to {save_file}')
 
         if args.eval:
             print('Evaluating network...')
