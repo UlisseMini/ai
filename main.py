@@ -10,7 +10,7 @@ from gym.spaces import Box, Discrete
 # default network perameters
 DP = {
     'sigma': 0.5,
-    'alpha': 0.01,
+    'alpha': 0.5,
     'npop': 50,
     'show_every': 10,
 }
@@ -62,6 +62,40 @@ class Net:
         return Net(net.weights, net.biases)
 
 
+    # this is terrible, don't do this, don't write code like this
+    # I really should find a better way to do this :l
+    @classmethod
+    def from_params(cls, params, layers):
+        total_biases = sum(layers[1:])
+        total_weights = sum(a*b for a,b in zip(layers[:-1], layers[1:]))
+
+        biases_arr = params[:total_biases]
+        weights_arr = params[total_biases:total_weights]
+
+        biases = []
+        weights = []
+
+        offset = 0
+        for l in range(len(layers) - 1):
+            size = layers[l+1]
+            biases.append(biases_arr[offset:offset+size])
+            offset += size
+
+        w_shapes = list(zip(layers[1:], layers[:-1]))
+        for l in range(len(layers) - 1):
+            size = w_shapes[l][0]*w_shapes[l][1]
+            weights.append(
+                params[offset:offset+size].reshape(w_shapes[l])
+            )
+            offset += size
+
+        return cls(weights, biases)
+
+
+    def params(self):
+        return np.concatenate(self.biases + [w.flatten() for w in self.weights])
+
+
     def forward(self, a):
         for w, b in zip(self.weights, self.biases):
             a = activ(np.dot(w, a) + b)
@@ -99,6 +133,26 @@ class Net:
 
 
 
+    def update_step(self, env, npop, sigma, alpha):
+        params = self.params()
+
+        noise = np.random.randn(npop, params.size)
+        R = np.zeros(npop)
+        for j in range(npop):
+            m_net = Net.from_params(params + sigma*noise[j], self.layers)
+            R[j] = m_net.evaluate(env)
+
+        A = (R - R.mean()) / (R.std() or 1.0)
+
+        delta  = np.dot(noise.T, A) / (npop*sigma)
+        params = params + delta*alpha
+
+        new = Net.from_params(params, self.layers)
+        self.biases  = new.biases
+        self.weights = new.weights
+
+
+
     def train(
             self, env, generations,
             interactive=True, show_every=DP['show_every'],
@@ -109,48 +163,7 @@ class Net:
         alpha is learning rate
         """
         for gen in range(generations):
-            w_noise = [np.random.randn(npop, *w.shape)*sigma for w in self.weights]
-            b_noise = [np.random.randn(npop, *b.shape)*sigma for b in self.biases]
-            assert len(w_noise) == len(b_noise)
-
-            R = np.zeros(npop)
-            for j in range(npop):
-                # mutate weights and biases
-                m_weights = [w + w_noise[i][j] for i, w in enumerate(self.weights)]
-                m_biases = [b + b_noise[i][j]  for i, b in enumerate(self.biases)]
-
-                mutation = Net(m_weights, m_biases)
-                R[j] = mutation.evaluate(env)
-
-            # standardize the rewards to have a gaussian distribution
-            A = (R - np.mean(R)) / (np.std(R) or 1.0)
-
-            # weight the noise based on rewards
-            w_delta = []
-            b_delta = []
-            for i in range(len(w_noise)):
-                w_weighted_avg = np.zeros(self.weights[i].shape)
-                b_weighted_avg = np.zeros(self.biases[i].shape)
-
-                for j in range(npop):
-                    b_weighted_avg += b_noise[i][j] * A[j]
-                    w_weighted_avg += w_noise[i][j] * A[j]
-
-                b_weighted_avg /= npop
-                w_weighted_avg /= npop
-
-
-                w_delta.append(w_weighted_avg) # <-- should be self.weights[i].shape
-                b_delta.append(b_weighted_avg) # <-- should be self.biases[i].shape
-
-
-
-            # preform the parameter update.
-            # print(w_delta[0].shape)
-            # print(b_delta[0].shape)
-            self.weights = [w + wd for w, wd in zip(self.weights, w_delta)]
-            self.biases  = [b + bd for b, bd in zip(self.biases, b_delta)]
-
+            self.update_step(env, npop, sigma, alpha)
 
             # print current best reward
             if interactive:
