@@ -7,12 +7,14 @@ import numpy as np
 import pickle
 from gym.spaces import Box, Discrete
 
-# default network perameters
+# default Net.train() parameters
 DP = {
     'sigma': 0.5,
     'alpha': 0.5,
     'npop': 50,
     'show_every': 10,
+    'print_stats': True,
+    'render': True,
 }
 
 # activation function
@@ -155,7 +157,7 @@ class Net:
 
     def train(
             self, env, generations,
-            interactive=True, show_every=DP['show_every'],
+            print_stats=DP['print_stats'], render=DP['render'], show_every=DP['show_every'],
             npop=DP['npop'], sigma=DP['sigma'], alpha=DP['alpha']
     ):
         """
@@ -166,8 +168,10 @@ class Net:
             self.update_step(env, npop, sigma, alpha)
 
             # print current best reward
-            if interactive:
-                reward = self.evaluate(env, render=(gen % show_every == 0), sleep=0)
+
+            if print_stats:
+                reward = self.evaluate(
+                    env, render=(render and (gen % show_every == 0)), sleep=0)
                 print(f'gen {gen} reward: {reward}')
 
 
@@ -233,7 +237,7 @@ def main():
             try:
                 net.train(
                     env, args.gen,
-                    interactive=True, show_every=args.show_every,
+                    render=args.eval, print_stats=True, show_every=args.show_every,
                     npop=args.npop, sigma=args.sigma, alpha=args.alpha,
                 )
             # AssertionError raised by some envs when interrupted.

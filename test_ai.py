@@ -22,7 +22,7 @@ def test(args):
             layers = (*layers, env.action_space.n)
 
         net = Net.random(layers)
-        net.train(env, generations, interactive=False)
+        net.train(env, generations, render=False, print_stats=False)
         n = 10 # times to run evaluation before taking average
         reward = sum(net.evaluate(env) for _ in range(n)) / n
 
