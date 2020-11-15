@@ -189,8 +189,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env',    help='the gym enviorment to use', default='CartPole-v0')
     parser.add_argument('--save',   help='save file to use')
-    parser.add_argument('--eval',   help='evaluate network', default=True, action='store_false')
-    parser.add_argument('--train',  help='train network',    default=True, action='store_false')
+    parser.add_argument('--eval',   help='evaluate network', default=False, action='store_true')
+    parser.add_argument('--train',  help='train network',    default=False, action='store_true')
     parser.add_argument('--npop',   help='population count',         type=int,   default=DP['npop'])
     parser.add_argument('--sigma',  help='noise standard deviation', type=float, default=DP['sigma'])
     parser.add_argument('--alpha',  help='learning rate',            type=float, default=DP['alpha'])
@@ -206,6 +206,11 @@ def main():
     args = parser.parse_args()
 
     save_file = args.save or f'{args.env}-{"x".join(map(str, args.layers))}.pkl'
+
+    if not args.train and not args.eval:
+        # neither supplied, set both to True
+        args.train = True
+        args.eval = True
 
     with gym.make(args.env) as env:
         input_layer = space_to_n(env.observation_space)
