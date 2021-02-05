@@ -6,6 +6,7 @@ import os
 import numpy as np
 import pickle
 from gym.spaces import Box, Discrete
+import multiprocessing as mp
 
 # default Net.train() parameters
 DP = {
@@ -25,6 +26,53 @@ def relu(z):
 # NOTE: If you change this, make sure you deal with
 # low values with cont action values.
 activ = relu
+
+def worker(env_id, nets, rewards):
+    N = 10 # how many runs to mean over
+    with gym.make(env_id) as env:
+        try:
+            while x := nets.get():
+                j, net = x
+                reward = sum(net.evaluate(env) for _ in range(N)) / N
+                rewards.put((j, reward))
+        except ValueError as e:
+            print('queue closed?:', e)
+    print('worker exit')
+
+
+
+def evaluate_many(agents, env, req=1, *args, **kwargs):
+    env_id = env.spec.id
+    procs = []
+    work = mp.Queue(len(agents))
+    rewards = mp.Queue(len(agents))
+
+    for core in range(mp.cpu_count()):
+        p = mp.Process(target=worker, args=(env_id, work, rewards))
+        p.start()
+        procs.append(p)
+
+
+    R = np.zeros(len(agents))
+    for j, net in enumerate(agents):
+        work.put((j, net)) # should be fine because of buffer
+
+    work.close()
+
+    for i in range(len(agents)):
+        j, r = rewards.get()
+        print(f'got reward {i}: {r}', end=(' '*20)+'\r')
+        R[j] = r
+
+    rewards.close()
+
+    # print('p.join()')
+    for p in procs:
+        p.terminate()
+        p.join()
+    # print('done')
+
+    return R
 
 
 class Net:
@@ -99,13 +147,19 @@ class Net:
 
 
     def forward(self, a):
-        for w, b in zip(self.weights, self.biases):
+        # flatten in case we have a matrix as input.
+        a = a.reshape(self.weights[0].shape[1])
+
+        for w, b in zip(self.weights[:-1], self.biases[:-1]):
             a = activ(np.dot(w, a) + b)
+
+        # don't run activation on the last neruon
+        a = np.dot(self.weights[-1], a) + self.biases[-1]
 
         return a
 
 
-    def evaluate(self, env, render=False, sleep=1/60):
+    def evaluate(self, env, render=False, sleep=0):
         total_reward = 0
 
         obs = env.reset()
@@ -115,14 +169,11 @@ class Net:
                 env.render()
                 time.sleep(sleep)
 
-            a = self.forward(obs)
-            if isinstance(env.action_space, Box):
-                # Since relu's min output is 0, we can't
-                # reach low. say low is -2, if we subtract 2
-                # from the result then we can access the low value.
-                action = a + env.action_space.low
-            else:
-                action = np.argmax(a)
+            action = self.forward(obs)
+            if isinstance(env.action_space, Discrete):
+                action = np.argmax(action)
+            elif isinstance(env.action_space, Box):
+                action = action.reshape(env.action_space.shape)
 
             obs, reward, done, _ = env.step(action)
             total_reward += reward
@@ -139,10 +190,16 @@ class Net:
         params = self.params()
 
         noise = np.random.randn(npop, params.size)
-        R = np.zeros(npop)
-        for j in range(npop):
-            m_net = Net.from_params(params + sigma*noise[j], self.layers)
-            R[j] = m_net.evaluate(env)
+        R = evaluate_many(
+            [Net.from_params(params + sigma*noise[j], self.layers) for j in range(npop)],
+            req=10,
+            env=env,
+            render=False, sleep=0,
+        )
+        # R = np.zeros(npop)
+        # for j in range(npop):
+        #     m_net = Net.from_params(params + sigma*noise[j], self.layers)
+        #     R[j] = m_net.evaluate(env)
 
         A = (R - R.mean()) / (R.std() or 1.0)
 
@@ -179,9 +236,7 @@ class Net:
 
 def space_to_n(space):
     if isinstance(space, Box):
-        # todo: flatten if multi-dimensional
-        assert len(space.shape) == 1, 'no multidimensional observations'
-        return space.shape[0]
+        return np.prod(space.shape)
     elif isinstance(space, Discrete):
         return space.n
     else:
