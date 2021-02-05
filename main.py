@@ -30,6 +30,7 @@ activ = relu
 def worker(env_id, nets, rewards):
     N = 10 # how many runs to mean over
     with gym.make(env_id) as env:
+        env = setup_wrappers(env)
         try:
             while x := nets.get():
                 j, net = x
@@ -148,7 +149,7 @@ class Net:
 
     def forward(self, a):
         # flatten in case we have a matrix as input.
-        a = a.reshape(self.weights[0].shape[1])
+        # a = a.reshape(self.weights[0].shape[1])
 
         for w, b in zip(self.weights[:-1], self.biases[:-1]):
             a = activ(np.dot(w, a) + b)
@@ -244,6 +245,20 @@ def space_to_n(space):
 
 
 
+def setup_wrappers(env):
+    obs_shape = env.observation_space.shape
+    is_image = len(obs_shape) == 3
+    if is_image:
+        from gym.wrappers import GrayScaleObservation
+        from gym.wrappers import FlattenObservation
+        from gym.wrappers import ResizeObservation
+
+        env = GrayScaleObservation(env)
+        # env = ResizeObservation(env, (obs_shape[0]//3, obs_shape[0]//3))
+        env = FlattenObservation(env)
+
+    return env
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env',    help='the gym enviorment to use', default='CartPole-v0')
@@ -272,9 +287,13 @@ def main():
         args.eval = True
 
     with gym.make(args.env) as env:
+        env = setup_wrappers(env)
+
         input_layer = space_to_n(env.observation_space)
         output_layer = space_to_n(env.action_space)
         layers = (input_layer, *args.layers, output_layer)
+        print(f'Layers: {layers}')
+        print(f'Env: {env}')
 
         if os.path.exists(save_file):
             net = Net.load(save_file)
