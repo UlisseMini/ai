@@ -1,5 +1,4 @@
 from main import Net
-from multiprocessing import Pool
 import os
 from gym.spaces import Box, Discrete
 import gym
@@ -33,8 +32,7 @@ def test(args):
 
 
 def main():
-    with Pool(os.cpu_count()) as p:
-        p.map(test, TESTS)
+    for t in TESTS: test(t)
 
 
 if __name__ == '__main__':
