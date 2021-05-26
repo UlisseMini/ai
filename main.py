@@ -258,6 +258,34 @@ class Net:
                 print(f'gen {gen} reward: {reward}')
 
 
+    def train_pycma(
+            self, env, generations,
+            print_stats=DP['print_stats'], render=DP['render'], show_every=DP['show_every'],
+            npop=DP['npop'],
+    ):
+        import cma
+
+        def f(params, N=10):
+            net = Net.from_params(params, layers=self.layers)
+            return sum(net.evaluate(env, sleep=0) for _ in range(N)) / N
+
+        es = cma.CMAEvolutionStrategy(self.params(), 1)
+        es.sp.popsize = npop
+
+        for gen in range(generations):
+            solutions = es.ask()
+            R = [-f(x) for x in solutions]
+            es.tell(solutions, R)
+            params = es.best.x
+
+            # update our net
+            new = Net.from_params(params, self.layers)
+            self.biases  = new.biases
+            self.weights = new.weights
+
+            if print_stats:
+                es.disp()
+
 
 def space_to_n(space):
     if isinstance(space, Box):
@@ -296,6 +324,7 @@ def main():
     parser.add_argument('--gen',    help='number of generations',    type=int,   default=100)
     parser.add_argument('--nbest',    help='nbest for CMA-ES',       type=int, default=10)
     parser.add_argument('--cma',    help='use CMA-ES',       default=False, action='store_true')
+    parser.add_argument('--pycma',    help='use pycma',      default=False, action='store_true')
     parser.add_argument(
         '--show-every',
         help='how many generations between rendering network in training',
@@ -337,6 +366,12 @@ def main():
             try:
                 if args.cma:
                     net.train_cma(
+                        env, args.gen,
+                        render=args.eval, print_stats=True, show_every=args.show_every,
+                        npop=args.npop
+                    )
+                elif args.pycma:
+                    net.train_pycma(
                         env, args.gen,
                         render=args.eval, print_stats=True, show_every=args.show_every,
                         npop=args.npop
