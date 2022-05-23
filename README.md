@@ -23,3 +23,15 @@ To test it yourself make sure `nets/LunarLanderContinuous-v2-16.pkl` exists then
 ```
 python main.py --env LunarLanderContinuous-v2 --eval
 ```
+
+An agent was also trained using Covariance-Matrix Adaptation (the `--cma` option). After ~220 generations it looks like this
+
+![cma lunar lander](images/lunarlander-cma.gif)
+
+The resulting agent is more robust, and successfully deactivates the boosters after landing. I think this is because CMA-ES can fine-tune better by adapting sigma, I ought to try sigma-adaptation for my NES agent too.
+
+See the CMA-ES agent with
+
+```
+python main.py --env LunarLanderContinuous-v2 --eval --save LunarLanderContinuous-v2-16-CMA.pkl
+```
