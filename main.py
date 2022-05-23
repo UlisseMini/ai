@@ -313,7 +313,7 @@ def setup_wrappers(env):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env',    help='the gym enviorment to use', default='CartPole-v0')
+    parser.add_argument('--env',    help='the gym enviorment to use', default='CartPole-v1')
     parser.add_argument('--save',   help='save filename to use (saved in ./nets)')
     parser.add_argument('--eval',   help='evaluate network', default=False, action='store_true')
     parser.add_argument('--train',  help='train network',    default=False, action='store_true')
