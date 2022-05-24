@@ -10,7 +10,7 @@ This repo contains
 
 ## Lunar Lander
 
-After way too much training NES was able to mostly solve Lunar Lander
+After way too much training NES with a low sigma it was able to mostly solve Lunar Lander
 
 ![winning lunar lander](images/lunarlanderwin.gif)
 
